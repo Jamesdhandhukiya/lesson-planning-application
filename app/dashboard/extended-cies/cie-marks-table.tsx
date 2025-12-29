@@ -37,6 +37,23 @@ export default function CieMarksTable({ data }: any) {
     })
   }
 
+  const getCIEMaxMarks = (cieNumber: string) => {
+    switch (cieNumber) {
+      case '1':
+        return 10
+      case '2':
+        return 20
+      case '3':
+        return 30
+      case '4' :
+        return 20
+      case '5' :
+        return 20
+      default:
+        return 0
+    }
+  }
+
   const cieColumns = getCieColumns()
 
   return (
@@ -51,12 +68,14 @@ export default function CieMarksTable({ data }: any) {
               const cieNumber = col.replace('cie', '')
               return (
                 <TableHead key={col} className="text-center font-semibold min-w-[80px]">
-                  CIE {cieNumber}
+                  <p>CIE {cieNumber}</p>
+                  <p className="mt-1">(Out of {getCIEMaxMarks(cieNumber)})</p>
                 </TableHead>
               )
             })}
             <TableHead className="text-center font-semibold min-w-[100px]">
-              Total Marks
+                  <p>Total Marks</p>
+                  <p className="mt-1">(Out of 100)</p>
             </TableHead>
           </TableRow>
         </TableHeader>
