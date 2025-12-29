@@ -290,7 +290,7 @@ export default function CIEPlanningForm({
 
     try {
       console.log(
-        "🔍 CIE: Checking faculty sharing for subject:",
+        "ðŸ” CIE: Checking faculty sharing for subject:",
         lessonPlan.subject.id
       );
 
@@ -299,7 +299,7 @@ export default function CIEPlanningForm({
       );
       const result = await response.json();
 
-      console.log("📡 CIE: Faculty sharing API response:", result);
+      console.log("ðŸ“¡ CIE: Faculty sharing API response:", result);
 
       if (result.success) {
         // Clean faculty data to ensure all names are strings
@@ -315,15 +315,15 @@ export default function CIEPlanningForm({
         };
 
         setFacultySharingData(cleanedResult);
-        console.log("✅ CIE: Faculty sharing data loaded:", cleanedResult);
+        console.log("âœ… CIE: Faculty sharing data loaded:", cleanedResult);
       } else {
         setFacultySharingError(
           result.error || "Failed to load faculty sharing data"
         );
-        console.error("❌ CIE: Faculty sharing error:", result.error);
+        console.error("âŒ CIE: Faculty sharing error:", result.error);
       }
     } catch (error) {
-      console.error("💥 CIE: Faculty sharing API error:", error);
+      console.error("ðŸ’¥ CIE: Faculty sharing API error:", error);
       setFacultySharingError("Failed to check faculty sharing");
     } finally {
       setLoadingFacultySharing(false);
@@ -437,7 +437,7 @@ export default function CIEPlanningForm({
 
               if (cieDate) {
                 const daysDiff = getDaysDifference(cieDate, termStartDate);
-                const isWithin = isDateWithinDays(cieDate, termStartDate, 10);
+                const isWithin = isDateWithinDays(cieDate, termStartDate, 15);
 
                 setDebugInfo({
                   termStartDate: rawTermStartDate,
@@ -469,7 +469,7 @@ export default function CIEPlanningForm({
       const facultyId = lessonPlan?.faculty?.id || userData?.id;
       const subjectId = lessonPlan?.subject?.id;
 
-      console.log("🔍 CIE AUTO-LOAD: Checking for draft data with:", {
+      console.log("ðŸ” CIE AUTO-LOAD: Checking for draft data with:", {
         facultyId,
         subjectId,
         hasUserData: !!userData,
@@ -480,7 +480,7 @@ export default function CIEPlanningForm({
       // Check if we have the required data
       if (!facultyId || !subjectId || draftLoaded) {
         console.log(
-          "🔍 CIE AUTO-LOAD: Missing required data or already loaded, skipping auto-load"
+          "ðŸ” CIE AUTO-LOAD: Missing required data or already loaded, skipping auto-load"
         );
         setIsLoadingDraft(false);
         return;
@@ -496,7 +496,7 @@ export default function CIEPlanningForm({
         );
 
       if (hasExistingData) {
-        console.log("🔍 CIE AUTO-LOAD: Already has data, skipping");
+        console.log("ðŸ” CIE AUTO-LOAD: Already has data, skipping");
         setIsLoadingDraft(false);
         setDraftLoaded(true);
         return;
@@ -506,7 +506,7 @@ export default function CIEPlanningForm({
 
       try {
         console.log(
-          "🔍 CIE AUTO-LOAD: Loading draft for:",
+          "ðŸ” CIE AUTO-LOAD: Loading draft for:",
           facultyId,
           subjectId
         );
@@ -519,7 +519,7 @@ export default function CIEPlanningForm({
 
         if (result.success && result.data) {
           const data = result.data;
-          console.log("🔍 CIE AUTO-LOAD: Draft loaded successfully:", data);
+          console.log("ðŸ” CIE AUTO-LOAD: Draft loaded successfully:", data);
 
           // Check if we have valid CIE data
           if (data.cies && Array.isArray(data.cies) && data.cies.length > 0) {
@@ -557,7 +557,7 @@ export default function CIEPlanningForm({
             }));
 
             console.log(
-              "🔍 CIE AUTO-LOAD: Setting CIEs to lesson plan:",
+              "ðŸ” CIE AUTO-LOAD: Setting CIEs to lesson plan:",
               validCIEs
             );
 
@@ -573,13 +573,13 @@ export default function CIEPlanningForm({
             );
             setDraftLoaded(true);
           } else {
-            console.log("🔍 CIE AUTO-LOAD: No valid CIE data found in draft");
+            console.log("ðŸ” CIE AUTO-LOAD: No valid CIE data found in draft");
           }
         } else {
-          console.log("🔍 CIE AUTO-LOAD: No draft found or failed to load");
+          console.log("ðŸ” CIE AUTO-LOAD: No draft found or failed to load");
         }
       } catch (error) {
-        console.error("🔍 CIE AUTO-LOAD: Error loading draft:", error);
+        console.error("ðŸ” CIE AUTO-LOAD: Error loading draft:", error);
       } finally {
         setIsLoadingDraft(false);
       }
@@ -1066,7 +1066,7 @@ export default function CIEPlanningForm({
           const cieDateFormatted = formatDateToDDMMYYYY(cieDate);
           const termEndFormatted = formatDateToDDMMYYYY(termEndDate);
 
-          console.log(`🔍 Date comparison for CIE ${index + 1}:`, {
+          console.log(`ðŸ” Date comparison for CIE ${index + 1}:`, {
             cieDate: cieDateFormatted,
             termEndDate: termEndFormatted,
             cieDateTime: cieDate.getTime(),
@@ -1148,7 +1148,7 @@ export default function CIEPlanningForm({
     const isTheorySubject = lessonPlan.subject?.is_theory === true;
     const isPracticalSubject = lessonPlan.subject?.is_practical === true;
 
-    console.log("🔍 FRONTEND Subject Type Detection:", {
+    console.log("ðŸ” FRONTEND Subject Type Detection:", {
       hasUnits,
       hasPracticals,
       isTheorySubject,
@@ -1211,7 +1211,7 @@ export default function CIEPlanningForm({
       }
     }
 
-    console.log("🔍 FRONTEND CIE Requirements:", {
+    console.log("ðŸ” FRONTEND CIE Requirements:", {
       subjectTypeDescription,
       semester,
       requiredTypes,
@@ -1289,7 +1289,7 @@ export default function CIEPlanningForm({
       }
     } else {
       console.log(
-        "🔍 FRONTEND: Skipping theory CIE duration validation for practical-only subject"
+        "ðŸ” FRONTEND: Skipping theory CIE duration validation for practical-only subject"
       );
     }
 
@@ -1636,7 +1636,7 @@ export default function CIEPlanningForm({
 
   // FIXED: Main save function with proper validation
   const handleSave = async () => {
-    console.log("🔍 FRONTEND: === HANDLE SAVE STARTED ===");
+    console.log("ðŸ” FRONTEND: === HANDLE SAVE STARTED ===");
     setSaving(true);
 
     // Clear all previous errors
@@ -1801,7 +1801,7 @@ export default function CIEPlanningForm({
               const isWithin10Days = isDateWithinDays(
                 cieDate,
                 termStartDate,
-                10
+                15
               );
 
               if (!isWithin10Days) {
@@ -1809,7 +1809,7 @@ export default function CIEPlanningForm({
                 allErrors.push(
                   `CIE ${
                     activeCIE + 1
-                  } (Course Prerequisites CIE): Must be within 10 days of term start date (currently ${daysDiff} days apart)`
+                  } (Course Prerequisites CIE): Must be within 15 days of term start date (currently ${daysDiff} days apart)`
                 );
               }
             }
@@ -1847,7 +1847,7 @@ export default function CIEPlanningForm({
         }
       }
 
-      console.log("🔍 FRONTEND: About to call saveCIEPlanningForm with data:", {
+      console.log("ðŸ” FRONTEND: About to call saveCIEPlanningForm with data:", {
         faculty_id: lessonPlan.faculty?.id || userData?.id || "",
         subject_id: lessonPlan.subject?.id || "",
         cies_count: lessonPlan.cies?.length,
@@ -1861,7 +1861,7 @@ export default function CIEPlanningForm({
         remarks: lessonPlan.cie_remarks,
       });
 
-      console.log("🔍 FRONTEND: Save result received:", result);
+      console.log("ðŸ” FRONTEND: Save result received:", result);
 
       if (result.success) {
         toast.success("CIE details saved successfully");
@@ -1876,7 +1876,7 @@ export default function CIEPlanningForm({
         // Clear the draft after successful submission
         await clearDraft();
       } else {
-        console.error("🔍 FRONTEND: Save failed with error:", result.error);
+        console.error("ðŸ” FRONTEND: Save failed with error:", result.error);
 
         // Display backend validation errors in the red box
         if (result.error) {
@@ -1890,17 +1890,17 @@ export default function CIEPlanningForm({
         toast.error("Please fix validation errors before saving");
       }
     } catch (error) {
-      console.error("🔍 FRONTEND: === FRONTEND CATCH ERROR ===");
-      console.error("🔍 FRONTEND: Error type:", typeof error);
+      console.error("ðŸ” FRONTEND: === FRONTEND CATCH ERROR ===");
+      console.error("ðŸ” FRONTEND: Error type:", typeof error);
       console.error(
-        "🔍 FRONTEND: Error constructor:",
+        "ðŸ” FRONTEND: Error constructor:",
         error?.constructor?.name
       );
-      console.error("🔍 FRONTEND: Error message:", error?.message);
-      console.error("🔍 FRONTEND: Error stack:", error?.stack);
-      console.error("🔍 FRONTEND: Full error object:", error);
+      console.error("ðŸ” FRONTEND: Error message:", error?.message);
+      console.error("ðŸ” FRONTEND: Error stack:", error?.stack);
+      console.error("ðŸ” FRONTEND: Full error object:", error);
       console.error(
-        "🔍 FRONTEND: JSON stringified error:",
+        "ðŸ” FRONTEND: JSON stringified error:",
         JSON.stringify(error, Object.getOwnPropertyNames(error))
       );
 
@@ -2349,7 +2349,7 @@ export default function CIEPlanningForm({
                               }}
                               className="ml-1 text-red-500 hover:text-red-700"
                             >
-                              ×
+                              Ã—
                             </button>
                           </Badge>
                         );
@@ -2388,7 +2388,7 @@ export default function CIEPlanningForm({
                             }}
                             className="ml-1 text-red-500 hover:text-red-700"
                           >
-                            ×
+                            Ã—
                           </button>
                         </Badge>
                       );
@@ -2413,7 +2413,7 @@ export default function CIEPlanningForm({
             />
             {currentCIE.type === "Course Prerequisites CIE" && (
               <p className="text-xs text-amber-600 mt-1">
-                Must be within 10 days of term start date
+                Must be within 15 days of term start date
               </p>
             )}
           </div>
@@ -2706,7 +2706,7 @@ export default function CIEPlanningForm({
                       }}
                       className="ml-1 text-red-500 hover:text-red-700"
                     >
-                      ×
+                      Ã—
                     </button>
                   </Badge>
                 );
@@ -2769,7 +2769,7 @@ export default function CIEPlanningForm({
                           }}
                           className="ml-1 text-red-500 hover:text-red-700"
                         >
-                          ×
+                          Ã—
                         </button>
                       </Badge>
                     );
@@ -2839,7 +2839,7 @@ export default function CIEPlanningForm({
                           }}
                           className="ml-1 text-red-500 hover:text-red-700"
                         >
-                          ×
+                          Ã—
                         </button>
                       </Badge>
                     );
