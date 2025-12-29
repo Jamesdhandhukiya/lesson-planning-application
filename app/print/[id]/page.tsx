@@ -452,7 +452,7 @@ export default function PrintLessonPlanPage() {
                               Faculty Name:
                             </td>
                             <td className="border border-black p-2 w-[30%]">
-                              {unit.faculty_name}
+                              {lessonPlan.users?.name}
                             </td>
                           </tr>
                           <tr>
