@@ -312,7 +312,7 @@ function ViewLessonPlanPage() {
                                 Faculty Name:
                               </td>
                               <td className="border border-black p-2 w-[30%]">
-                                {unit?.faculty_name || "N/A"}
+                                {lessonPlan.users?.name || "N/A"}
                               </td>
                             </tr>
                             <tr>
