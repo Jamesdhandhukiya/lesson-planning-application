@@ -255,7 +255,7 @@ export default function CollapsibleSidebar({
                         className={`cursor-pointer group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 w-full text-left text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50`}
                       >
                         <ScrollText className="h-5 w-5 mr-3 text-gray-500 group-hover:text-[#1A5CA1]" />
-                        {!isCollapsed && <span>Extended Form</span>}
+                        {!isCollapsed && <span>Continuous Internal Evaluation (CIE)</span>}
                       </button>
                     </Link>
                   )}
