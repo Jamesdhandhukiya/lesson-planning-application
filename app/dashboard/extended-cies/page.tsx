@@ -16,7 +16,7 @@ async function ExtendedCies() {
                 <Card className="h-screen">
                     <CardHeader>
                         <CardTitle className="text-[#1A5CA1] font-manrope font-bold text-[25px] leading-[25px]">
-                            Extended CIE-Marks Table
+                            Continuous Internal Evaluation (CIE) Marks
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
