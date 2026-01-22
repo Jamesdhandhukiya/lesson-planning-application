@@ -71,9 +71,10 @@ export default function ModerationPage() {
 
         {currentRole.role_name === "Faculty" ? (
           // ================== FACULTY VIEW ==================
+        
+
           <div className="mt-6 flex flex-col gap-6">
 
-           {/* BOX 1 */}
             <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm w-full">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-md bg-blue-50">
@@ -84,36 +85,19 @@ export default function ModerationPage() {
                 </h3>
               </div>
 
-              <p className="text-gray-600 mb-4">Submit & Review moderation papers.</p>
+              <p className="text-gray-600 mb-4">
+               Submit & Review moderation papers.
+              </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-
-                {/* Upload Button */}
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
                 <Link href="/dashboard/Moderation/uploadpaper" className="w-full">
                   <Button size="sm" className="w-full">
                     <Upload className="h-4 w-4 mr-1" />
-                    Upload
+                     Upload
                   </Button>
                 </Link>
-
-                {/* Comments Button */}
-                <Link href="/dashboard/Moderation/comments" className="w-full">
-                  <Button size="sm" variant="outline" className="w-full">
-                    <Eye className="h-4 w-4 mr-1" />
-                    Comments
-                  </Button>
-                </Link>
-
-                <Link href="/dashboard/Moderation/status" className="w-full">
-                  <Button size="sm" className="w-full">
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Status
-                  </Button>
-                </Link>
-
               </div>
             </div>
-
 
           </div>
 
@@ -136,7 +120,7 @@ export default function ModerationPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-1 gap-2">
-                <Link href="/dashboard/moderation/reports" className="w-full">
+                <Link href="/dashboard/Moderation/reports" className="w-full">
                   <Button size="sm" className="w-full">
                     <Eye className="h-4 w-4 mr-1" />
                     View All Submissions
