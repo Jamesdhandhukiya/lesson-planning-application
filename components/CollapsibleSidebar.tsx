@@ -12,8 +12,12 @@ import {
   FileLock2,
   UserCheck,
   List,
+<<<<<<< HEAD
   Workflow,
   ScrollText
+=======
+  ScrollText,
+>>>>>>> 605c1953ba7973cd7014056a4eecd9df5a30976a
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,7 +32,9 @@ interface CollapsibleSidebarProps {
   signOut: () => void;
 }
 
-export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps) {
+export default function CollapsibleSidebar({
+  signOut,
+}: CollapsibleSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { userData, currentRole, updateUserData } = useDashboardContext();
   const pathname = usePathname();
@@ -37,7 +43,8 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
   const [isGuidelineModalOpen, setIsGuidelineModalOpen] = useState(false);
 
   // Special case: Faculty who can see Principal dashboard
-  const canAccessPrincipalDashboard = userData.email === "radhikapatel.it@charusat.ac.in";
+  const canAccessPrincipalDashboard =
+    userData.email === "radhikapatel.it@charusat.ac.in";
 
   // Get initials for avatar fallback
   const getInitials = (name: string) => {
@@ -79,14 +86,13 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
 
   // Check if user should see HOD features
   const shouldShowHODFeatures = currentRole?.role_name === "HOD";
-  
+
   // Check if user should see Principal features
-  const shouldShowPrincipalFeatures = 
+  const shouldShowPrincipalFeatures =
     currentRole?.role_name === "Principal" || canAccessPrincipalDashboard;
-  
+
   // Check if user should see Faculty features
-  const shouldShowFacultyFeatures = 
-    currentRole?.role_name === "Faculty";
+  const shouldShowFacultyFeatures = currentRole?.role_name === "Faculty";
 
   return (
     <>
@@ -135,9 +141,7 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
               <p className="text-[#1A5CA1] font-bold text-xl">
                 {userData.name}
               </p>
-              <p className="text-gray-600">
-                {getDisplayRole()}
-              </p>
+              <p className="text-gray-600">{getDisplayRole()}</p>
             </div>
           )}
         </div>
@@ -186,7 +190,7 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
                       {!isCollapsed && <span>View LP Forms</span>}
                     </button>
                   </Link>
-                  
+
                   <Link href="/dashboard/list-cie-forms">
                     <button
                       className={`cursor-pointer group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 w-full text-left text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50`}
@@ -235,7 +239,7 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
                       {!isCollapsed && <span>View LP Forms</span>}
                     </button>
                   </Link>
-                  
+
                   <Link href="/dashboard/list-cie-forms">
                     <button
                       className={`cursor-pointer group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 w-full text-left text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50`}
@@ -286,6 +290,7 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
                     {!isCollapsed && <span>Lesson Planning (LP)</span>}
                   </Link>
 
+<<<<<<< HEAD
                   <Link
                     href="/dashboard/Moderation"
                     className={`group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 ${
@@ -303,11 +308,23 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
                     />
                     {!isCollapsed && <span>Moderation</span>}
                   </Link>
+=======
+                  {userData.email === "kirtimakwana.mba@charusat.ac.in" && (
+                    <Link href="/dashboard/extended-cies">
+                      <button
+                        className={`cursor-pointer group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 w-full text-left text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50`}
+                      >
+                        <ScrollText className="h-5 w-5 mr-3 text-gray-500 group-hover:text-[#1A5CA1]" />
+                        {!isCollapsed && <span>Continuous Internal Evaluation (CIE)</span>}
+                      </button>
+                    </Link>
+                  )}
+>>>>>>> 605c1953ba7973cd7014056a4eecd9df5a30976a
                 </>
               )}
             </div>
           </div>
-          
+
           {/* Guidelines Link */}
           <div>
             <button
@@ -352,7 +369,7 @@ export default function CollapsibleSidebar({ signOut }: CollapsibleSidebarProps)
         onPhotoUploaded={handlePhotoUploaded}
         onPhotoDeleted={handlePhotoDeleted}
       />
-      
+
       {/* Guidelines Modal */}
       <GuidelineModel
         isOpen={isGuidelineModalOpen}

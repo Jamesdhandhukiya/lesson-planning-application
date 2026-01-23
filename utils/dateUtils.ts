@@ -637,7 +637,7 @@ export function getDaysDifference(date1: string | Date, date2: string | Date): n
   if (!d1 || !d2) return 0
 
   const diffTime = Math.abs(d2.getTime() - d1.getTime())
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return Math.ceil(diffTime / (1500 * 60 * 60 * 24))
 }
 
 /**
