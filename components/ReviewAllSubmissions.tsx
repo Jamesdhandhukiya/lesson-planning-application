@@ -250,10 +250,12 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
                             <Badge
                               className={
                                 submission.status === "approved"
-                                  ? "bg-green-100 text-green-700"
+                                  ? "bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700"
                                   : submission.status === "rejected"
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-yellow-100 text-yellow-700"
+                                    ? "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700"
+                                    : submission.status === "sent-for-review"
+                                      ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-700"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
                               }
                             >
                               {submission.status || "pending"}
@@ -321,43 +323,47 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
             </Card>
           )
         })}
-      </div>
+      </div >
 
       {/* Exam Details Modal */}
-      {selectedSubmission && (
-        <ExamDetailsModal
-          isOpen={showExamDetails}
-          onClose={() => {
-            setShowExamDetails(false)
-            setSelectedSubmission(null)
-          }}
-          examDetails={lessonPlanCache[selectedSubmission.subject_id]?.cies?.[selectedSubmission.cie_index] || {}}
-          general={lessonPlanCache[selectedSubmission.subject_id]?.generalDetails}
-          units={lessonPlanCache[selectedSubmission.subject_id]?.units}
-          practicals={lessonPlanCache[selectedSubmission.subject_id]?.practicals}
-          cieIndex={selectedSubmission.cie_index}
-          subjectName={Array.isArray(selectedSubmission.subjects) ? selectedSubmission.subjects[0]?.name : selectedSubmission.subjects?.name}
-        />
-      )}
+      {
+        selectedSubmission && (
+          <ExamDetailsModal
+            isOpen={showExamDetails}
+            onClose={() => {
+              setShowExamDetails(false)
+              setSelectedSubmission(null)
+            }}
+            examDetails={lessonPlanCache[selectedSubmission.subject_id]?.cies?.[selectedSubmission.cie_index] || {}}
+            general={lessonPlanCache[selectedSubmission.subject_id]?.generalDetails}
+            units={lessonPlanCache[selectedSubmission.subject_id]?.units}
+            practicals={lessonPlanCache[selectedSubmission.subject_id]?.practicals}
+            cieIndex={selectedSubmission.cie_index}
+            subjectName={Array.isArray(selectedSubmission.subjects) ? selectedSubmission.subjects[0]?.name : selectedSubmission.subjects?.name}
+          />
+        )
+      }
 
       {/* Rejection Comment Modal */}
-      {rejectionSubmission && (
-        <RejectionCommentModal
-          isOpen={showRejectionModal}
-          onClose={() => {
-            setShowRejectionModal(false)
-            setRejectionSubmission(null)
-          }}
-          submissionId={rejectionSubmission.id}
-          facultyName={Array.isArray(rejectionSubmission.users) ? rejectionSubmission.users[0]?.name : rejectionSubmission.users?.name}
-          fileName={rejectionSubmission.file_name}
-          onCommentSubmitted={() => {
-            setShowRejectionModal(false)
-            setRejectionSubmission(null)
-          }}
-          onSubmitComment={handleRejectionCommentSubmit}
-        />
-      )}
+      {
+        rejectionSubmission && (
+          <RejectionCommentModal
+            isOpen={showRejectionModal}
+            onClose={() => {
+              setShowRejectionModal(false)
+              setRejectionSubmission(null)
+            }}
+            submissionId={rejectionSubmission.id}
+            facultyName={Array.isArray(rejectionSubmission.users) ? rejectionSubmission.users[0]?.name : rejectionSubmission.users?.name}
+            fileName={rejectionSubmission.file_name}
+            onCommentSubmitted={() => {
+              setShowRejectionModal(false)
+              setRejectionSubmission(null)
+            }}
+            onSubmitComment={handleRejectionCommentSubmit}
+          />
+        )
+      }
 
     </>
   )
