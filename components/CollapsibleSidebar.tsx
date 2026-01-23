@@ -12,7 +12,12 @@ import {
   FileLock2,
   UserCheck,
   List,
+<<<<<<< HEAD
+  Workflow,
+  ScrollText
+=======
   ScrollText,
+>>>>>>> 605c1953ba7973cd7014056a4eecd9df5a30976a
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -195,6 +200,24 @@ export default function CollapsibleSidebar({
                     </button>
                   </Link>
 
+                   <Link
+                    href="/dashboard/Moderation"
+                    className={`group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 ${
+                      pathname.startsWith("/dashboard/Moderation")
+                        ? "text-[#1A5CA1] bg-blue-50"
+                        : "text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50"
+                    }`}
+                  >
+                    <Workflow
+                      className={`h-5 w-5 mr-3 ${
+                        pathname.startsWith("/dashboard/Moderation")
+                          ? "text-[#1A5CA1]"
+                          : "text-gray-500 group-hover:text-[#1A5CA1]"
+                      }`}
+                    />
+                    {!isCollapsed && <span>Moderation</span>}
+                  </Link>
+
                   <button
                     onClick={() => setIsPsoPeoModalOpen(true)}
                     className={`cursor-pointer group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 w-full text-left text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50`}
@@ -225,6 +248,24 @@ export default function CollapsibleSidebar({
                       {!isCollapsed && <span>View CIE Forms</span>}
                     </button>
                   </Link>
+                  
+                   {/* <Link
+                    href="/dashboard/Moderation"
+                    className={`group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 ${
+                      pathname.startsWith("/dashboard/Moderation")
+                        ? "text-[#1A5CA1] bg-blue-50"
+                        : "text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50"
+                    }`}
+                  >
+                    <Workflow
+                      className={`h-5 w-5 mr-3 ${
+                        pathname.startsWith("/dashboard/Moderation")
+                          ? "text-[#1A5CA1]"
+                          : "text-gray-500 group-hover:text-[#1A5CA1]"
+                      }`}
+                    />
+                    {!isCollapsed && <span>Moderation</span>}
+                  </Link> */}
                 </>
               )}
 
@@ -249,6 +290,25 @@ export default function CollapsibleSidebar({
                     {!isCollapsed && <span>Lesson Planning (LP)</span>}
                   </Link>
 
+<<<<<<< HEAD
+                  <Link
+                    href="/dashboard/Moderation"
+                    className={`group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 ${
+                      pathname.startsWith("/dashboard/Moderation")
+                        ? "text-[#1A5CA1] bg-blue-50"
+                        : "text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50"
+                    }`}
+                  >
+                    <Workflow
+                      className={`h-5 w-5 mr-3 ${
+                        pathname.startsWith("/dashboard/Moderation")
+                          ? "text-[#1A5CA1]"
+                          : "text-gray-500 group-hover:text-[#1A5CA1]"
+                      }`}
+                    />
+                    {!isCollapsed && <span>Moderation</span>}
+                  </Link>
+=======
                   {userData.email === "kirtimakwana.mba@charusat.ac.in" && (
                     <Link href="/dashboard/extended-cies">
                       <button
@@ -259,6 +319,7 @@ export default function CollapsibleSidebar({
                       </button>
                     </Link>
                   )}
+>>>>>>> 605c1953ba7973cd7014056a4eecd9df5a30976a
                 </>
               )}
             </div>
