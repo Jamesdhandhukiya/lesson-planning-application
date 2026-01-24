@@ -211,7 +211,7 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 py-8  mx-auto">
         {Object.entries(groupedBySubject).map(([subjectId, subjectSubmissions]) => {
           const firstSub = subjectSubmissions[0]
           const subjectData = Array.isArray(firstSub.subjects) ? firstSub.subjects[0] : firstSub.subjects

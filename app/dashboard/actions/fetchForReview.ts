@@ -1,6 +1,10 @@
 "use server"
 
 import { createClient } from "@supabase/supabase-js"
+import {
+  sendApprovalNotificationToFaculty,
+  sendRejectionNotificationToFaculty,
+} from "@/services/emailService"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
@@ -114,6 +118,41 @@ export async function updateSubmissionStatus(
       return { success: false, error: "Submission ID is required" }
     }
 
+    // Fetch submission details before updating (for email)
+    const { data: submissionData, error: fetchError } = await supabase
+      .from("exam_paper_submissions")
+      .select(
+        `
+        id,
+        cie_index,
+        subject_id,
+        faculty_id,
+        subjects (
+          id,
+          name,
+          code,
+          department_id,
+          departments (
+            id,
+            name,
+            abbreviation_depart
+          )
+        ),
+        users (
+          id,
+          name,
+          email
+        )
+        `
+      )
+      .eq("id", submissionId)
+      .single()
+
+    if (fetchError || !submissionData) {
+      console.error("Error fetching submission details:", fetchError)
+      return { success: false, error: "Failed to fetch submission details" }
+    }
+
     const updateData: any = { status }
     if (feedback) {
       updateData.feedback = feedback
@@ -128,6 +167,33 @@ export async function updateSubmissionStatus(
     if (error) {
       console.error("Error updating submission status:", error)
       return { success: false, error: "Failed to update submission status" }
+    }
+
+    // Send approval email if status is 'accepted' or 'approved' (UI uses 'approved')
+    if (status === "accepted" || status === "approved") {
+      const facultyName = submissionData.users?.name || "Faculty"
+      const facultyEmail = submissionData.users?.email || ""
+      const subjectName = submissionData.subjects?.name || "Unknown Subject"
+      const subjectCode = submissionData.subjects?.code || "N/A"
+      const cieLabel = typeof submissionData.cie_index === "number" ? `CIE ${submissionData.cie_index + 1}` : (submissionData.exam_name || "CIE")
+      const departmentName = submissionData.subjects?.departments?.name || "Department"
+
+      const emailResult = await sendApprovalNotificationToFaculty(
+        facultyName,
+        facultyEmail,
+        subjectName,
+        subjectCode,
+        cieLabel,
+        departmentName,
+        feedback
+      )
+
+      if (!emailResult.success) {
+        console.warn("Failed to send approval email:", emailResult.error)
+        // Don't fail the operation if email fails
+      } else {
+        console.log("Approval email sent successfully")
+      }
     }
 
     return { success: true, data }
@@ -150,16 +216,51 @@ export async function rejectSubmissionWithComment(
       return { success: false, error: "Missing required fields" }
     }
 
-    // First, get the HOD user ID
-    const { data: userData, error: userError } = await supabase
+    // First, get the HOD user details
+    const { data: hodData, error: hodError } = await supabase
       .from("users")
-      .select("id")
+      .select("id, name, email")
       .eq("auth_id", hodAuthId)
       .single()
 
-    if (userError || !userData) {
-      console.error("Error fetching HOD user:", userError)
+    if (hodError || !hodData) {
+      console.error("Error fetching HOD user:", hodError)
       return { success: false, error: "Unable to identify HOD user" }
+    }
+
+    // Fetch submission details including faculty and subject info (for email)
+    const { data: submissionData, error: fetchError } = await supabase
+      .from("exam_paper_submissions")
+      .select(
+        `
+        id,
+        cie_index,
+        subject_id,
+        faculty_id,
+        subjects (
+          id,
+          name,
+          code,
+          department_id,
+          departments (
+            id,
+            name,
+            abbreviation_depart
+          )
+        ),
+        users (
+          id,
+          name,
+          email
+        )
+        `
+      )
+      .eq("id", submissionId)
+      .single()
+
+    if (fetchError || !submissionData) {
+      console.error("Error fetching submission details:", fetchError)
+      return { success: false, error: "Failed to fetch submission details" }
     }
 
     // Update submission status to rejected
@@ -179,7 +280,7 @@ export async function rejectSubmissionWithComment(
       .insert([
         {
           submission_id: submissionId,
-          hod_id: userData.id,
+          hod_id: hodData.id,
           comment: comment.trim(),
           is_visible_to_faculty: true,
         },
@@ -189,6 +290,33 @@ export async function rejectSubmissionWithComment(
     if (commentError) {
       console.error("Error storing rejection comment:", commentError)
       return { success: false, error: "Paper rejected but comment failed to save" }
+    }
+
+    // Send rejection email to faculty with HOD comments
+    const facultyName = submissionData.users?.name || "Faculty"
+    const facultyEmail = submissionData.users?.email || ""
+    const subjectName = submissionData.subjects?.name || "Unknown Subject"
+    const subjectCode = submissionData.subjects?.code || "N/A"
+    const cieLabel = typeof submissionData.cie_index === "number" ? `CIE ${submissionData.cie_index + 1}` : (submissionData.exam_name || "CIE")
+    const departmentName = submissionData.subjects?.departments?.name || "Department"
+    const hodName = hodData.name || "HOD"
+
+    const emailResult = await sendRejectionNotificationToFaculty(
+      facultyName,
+      facultyEmail,
+      subjectName,
+      subjectCode,
+      cieLabel,
+      departmentName,
+      hodName,
+      comment.trim()
+    )
+
+    if (!emailResult.success) {
+      console.warn("Failed to send rejection email:", emailResult.error)
+      // Don't fail the operation if email fails
+    } else {
+      console.log("Rejection email sent successfully")
     }
 
     return { success: true, data: commentData }

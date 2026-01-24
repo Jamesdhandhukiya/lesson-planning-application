@@ -68,16 +68,16 @@ export function RejectionCommentModal({
           <DialogTitle className="text-[#1A5CA1]">Reject Paper with Comments</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 px-0">
           {/* Paper Details */}
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
             <div>
               <p className="text-sm text-gray-600">Faculty</p>
-              <p className="font-semibold text-gray-900">{facultyName}</p>
+              <p className="font-semibold text-gray-900 break-words">{facultyName}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">File</p>
-              <p className="font-semibold text-gray-900 truncate">{fileName}</p>
+              <p className="font-semibold text-gray-900 break-words">{fileName}</p>
             </div>
           </div>
 
