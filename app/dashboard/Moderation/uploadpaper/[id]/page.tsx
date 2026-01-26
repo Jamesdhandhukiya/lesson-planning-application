@@ -108,7 +108,7 @@ export default function ModerationSubjectPage() {
         const form = formRow.form || formRow;
         const subjectsData = formRow.subjects || assignment.subjects || form.subjects || {};
         const metadata = subjectsData.metadata || form.metadata || {};
-
+        
         // Get faculty ID from the assignment data (this is the database user ID)
         const facultyId = assignment.users?.id;
         if (!facultyId) {
@@ -116,7 +116,7 @@ export default function ModerationSubjectPage() {
           return;
         }
         setUserId(facultyId);
-
+        
         setSubjectName(assignment.subjects?.name || subjectsData.name || "");
         setSubjectCode(assignment.subjects?.code || subjectsData.code || "");
         setFacultyName(assignment.users?.name || "");
@@ -127,24 +127,24 @@ export default function ModerationSubjectPage() {
             ? `${assignment.departments.name}${assignment.departments.abbreviation_depart ? ` (${assignment.departments.abbreviation_depart})` : ""}`
             : assignment.subjects?.departments?.name || subjectsData.departments?.name || ""
         );
-
+        
         // Store the actual subject ID from the assignment
         const actualSubjId = assignment.subjects?.id || formRow.subject_id || subjectsData.id;
         if (actualSubjId) {
           setActualSubjectId(actualSubjId);
         }
-
+        
         // Extract term dates from metadata or generalDetails
         const startDate = metadata.term_start_date || form.generalDetails?.term_start_date || form.generalDetails?.termStartDate || "";
         const endDate = metadata.term_end_date || form.generalDetails?.term_end_date || form.generalDetails?.termEndDate || "";
-
+        
         setTermStartDate(startDate);
         setTermEndDate(endDate);
-
+        
         // Calculate academic year from term start date
         const calculatedAcademicYear = startDate ? getAcademicYear(startDate) : (assignment.academic_year || "");
         setAcademicYear(calculatedAcademicYear);
-
+        
         setGeneral(form.generalDetails || {});
         setUnits(form.units || form.unitPlanning?.units || []);
         setPracticals(form.practicals || form.practicalPlanning?.practicals || []);
@@ -228,17 +228,25 @@ export default function ModerationSubjectPage() {
 
   return (
     <div className="min-h-screen bg-white pt-3 px-5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex justify-between items-center px-5 py-3 border-2 rounded-lg mb-6">
         <div>
           <p className="text-[#1A5CA1] font-manrope font-bold text-[25px] leading-[25px]">
-            {subjectName || "Subject"} {subjectCode ? `(${subjectCode})` : ""}
+            {subjectName || "Subject"}
           </p>
-          <p className="text-sm text-gray-600 mt-1">Moderation - CIE overview</p>
+          <p className="text-sm text-gray-600 mt-1">{subjectCode ? `${subjectCode} - Moderation - CIE overview` : "Moderation - CIE overview"}</p>
         </div>
-        <Button variant="outline" onClick={() => router.push("/dashboard/Moderation")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Subjects
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => router.push("/dashboard/Moderation")}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -402,10 +410,10 @@ export default function ModerationSubjectPage() {
                         <p className="font-semibold">
                           {Array.isArray(activeCie.skill_mapping)
                             ? activeCie.skill_mapping
-                              .map((s: any) =>
-                                typeof s === "string" ? s : `${s.skill || "Skill"}${s.details ? ` - ${s.details}` : ""}`
-                              )
-                              .join(", ")
+                                .map((s: any) =>
+                                  typeof s === "string" ? s : `${s.skill || "Skill"}${s.details ? ` - ${s.details}` : ""}`
+                                )
+                                .join(", ")
                             : "N/A"}
                         </p>
                       </div>
@@ -454,7 +462,7 @@ export default function ModerationSubjectPage() {
                                     onChange={(e) => {
                                       const f = e.target.files?.[0] || null;
                                       if (!f) return;
-                                      const allowed = ["pdf", "doc", "docx", "xls", "xlsx", "png", "jpg", "jpeg", "webp"];
+                                      const allowed = ["pdf","doc","docx","xls","xlsx","png","jpg","jpeg","webp"];
                                       const name = f.name || "";
                                       const ext = name.split('.').pop()?.toLowerCase() || "";
                                       if (!allowed.includes(ext)) {
@@ -526,7 +534,7 @@ export default function ModerationSubjectPage() {
 
                                         if (result.success) {
                                           toast.success(result.message || "File uploaded successfully!");
-
+                                          
                                           // Reload submissions
                                           const submissionsResult = await fetchExamPaperSubmissions(
                                             actualSubjectId,
@@ -586,8 +594,9 @@ export default function ModerationSubjectPage() {
                                   {previousSubmissions[activeIndex].map((submission, idx) => (
                                     <div
                                       key={submission.id}
-                                      className={`flex items-center justify-between bg-white border rounded px-3 py-2 ${submission.is_latest ? "border-blue-300 bg-blue-50" : ""
-                                        }`}
+                                      className={`flex items-center justify-between bg-white border rounded px-3 py-2 ${
+                                        submission.is_latest ? "border-blue-300 bg-blue-50" : ""
+                                      }`}
                                     >
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
@@ -598,18 +607,7 @@ export default function ModerationSubjectPage() {
                                             </Badge>
                                           )}
                                           {submission.status && submission.status !== 'submitted' && (
-                                            <Badge
-                                              variant="outline"
-                                              className={
-                                                submission.status === "approved"
-                                                  ? "bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700"
-                                                  : submission.status === "rejected"
-                                                    ? "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700"
-                                                    : submission.status === "sent-for-review"
-                                                      ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-700"
-                                                      : "bg-gray-100 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
-                                              }
-                                            >
+                                            <Badge variant="outline" className="bg-yellow-100 text-yellow-700">
                                               {submission.status}
                                             </Badge>
                                           )}
@@ -632,7 +630,7 @@ export default function ModerationSubjectPage() {
                                         onClick={async () => {
                                           try {
                                             const result = await getExamPaperSignedUrl(submission.storage_path);
-
+                                            
                                             if (result.success && result.signedUrl) {
                                               window.open(result.signedUrl, "_blank");
                                             } else {
@@ -665,8 +663,8 @@ export default function ModerationSubjectPage() {
           </Card>
 
           <div className="flex justify-end gap-4 mt-6 mb-8">
-            <Button
-              variant="outline"
+            <Button 
+              variant="outline" 
               onClick={async () => {
                 if (!previousSubmissions[activeIndex] || previousSubmissions[activeIndex].length === 0) {
                   toast.error("Please upload a paper first before sending for review.");
@@ -708,21 +706,21 @@ export default function ModerationSubjectPage() {
             >
               Send for Review
             </Button>
-            <Button
+            <Button 
               onClick={() => {
                 // Check if latest submission is approved
                 const latestSubmission = previousSubmissions[activeIndex]?.[0];
-
+                
                 if (!latestSubmission) {
                   toast.error("Please upload a paper first");
                   return;
                 }
-
+                
                 if (latestSubmission.status !== "approved") {
                   toast.error("Paper must be accepted by HOD first before submitting");
                   return;
                 }
-
+                
                 toast.success("Submitted successfully!");
                 // Add submit logic here
               }}
