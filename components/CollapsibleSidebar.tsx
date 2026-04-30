@@ -82,7 +82,8 @@ export default function CollapsibleSidebar({
 
   // Check if user should see HOD features
   const shouldShowHODFeatures = currentRole?.role_name === "HOD";
-
+  // Check if user should see Course Owner features
+  const shouldShowCourseOwnerFeatures = currentRole?.role_name === "Course Owner"
   // Check if user should see Principal features
   const shouldShowPrincipalFeatures =
     currentRole?.role_name === "Principal" || canAccessPrincipalDashboard;
@@ -286,6 +287,29 @@ export default function CollapsibleSidebar({
                     {!isCollapsed && <span>Lesson Planning (LP)</span>}
                   </Link>
 
+                  <Link
+                    href="/dashboard/Moderation"
+                    className={`group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 ${
+                      pathname.startsWith("/dashboard/Moderation")
+                        ? "text-[#1A5CA1] bg-blue-50"
+                        : "text-gray-600 hover:text-[#1A5CA1] hover:bg-blue-50"
+                    }`}
+                  >
+                    <Workflow
+                      className={`h-5 w-5 mr-3 ${
+                        pathname.startsWith("/dashboard/Moderation")
+                          ? "text-[#1A5CA1]"
+                          : "text-gray-500 group-hover:text-[#1A5CA1]"
+                      }`}
+                    />
+                    {!isCollapsed && <span>Moderation</span>}
+                  </Link>
+                </>
+              )}
+
+              {/* Course Owner Features */}
+              {shouldShowCourseOwnerFeatures && (
+                <>
                   <Link
                     href="/dashboard/Moderation"
                     className={`group flex items-center px-3 py-3 text-base leading-6 font-medium rounded-md transition ease-in-out duration-150 mb-2 ${

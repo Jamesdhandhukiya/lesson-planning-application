@@ -195,11 +195,8 @@ async function CieFormsContent() {
 
   return (
     <FormsTable
-      forms={formsWithUserData}
-      userrole={userRoles}
-      allDepartments={allDepartments}
+      forms={formsWithUserData as any}
       isPrincipal={isPrincipal}
-      currentDepartmentIds={isHOD ? departmentIds : []}
     />
   )
 }

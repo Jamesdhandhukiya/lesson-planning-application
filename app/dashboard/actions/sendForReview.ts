@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@supabase/supabase-js"
-import { sendPaperSubmissionNotificationToHOD } from "@/services/emailService"
+import { sendPaperSubmissionNotificationToReviewer } from "@/services/emailService"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
@@ -60,18 +60,50 @@ export async function sendPaperForReview(
     }
 
     // Fetch HOD details for the department (department-based routing)
-    const departmentId = data.subjects?.department_id
-    const facultyName = data.users?.name || "Faculty"
-    const subjectName = data.subjects?.name || "Unknown Subject"
-    const subjectCode = data.subjects?.code || "N/A"
+    const anyData = data as any;
+    const departmentId = anyData.subjects?.department_id
+    const facultyName = anyData.users?.name || "Faculty"
+    const subjectName = anyData.subjects?.name || "Unknown Subject"
+    const subjectCode = anyData.subjects?.code || "N/A"
     const cieLabel = `CIE ${cieIndex + 1}`
-    const departmentName = data.subjects?.departments?.name || "Department"
+    const departmentName = anyData.subjects?.departments?.name || "Department"
 
     if (departmentId) {
+      const notificationTargets: Array<{
+        email: string
+        roleName: string
+      }> = []
+
+      // Find Course Owner for this subject
+      const { data: coData, error: coError } = await supabase
+        .from("user_role")
+        .select(`
+          id,
+          users (
+            id,
+            name,
+            email
+          ),
+          subjects!inner (
+            code
+          )
+        `)
+        .eq("role_name", "Course Owner")
+        .eq("subjects.code", subjectCode)
+        .limit(1)
+        .maybeSingle()
+
+      if (!coError && (coData as any)?.users?.email) {
+        notificationTargets.push({
+          email: (coData as any).users.email,
+          roleName: "Course Owner",
+        })
+      }
+
+      // Find HOD for the department
       const { data: hodData, error: hodError } = await supabase
         .from("user_role")
-        .select(
-          `
+        .select(`
           id,
           depart_id,
           users (
@@ -79,31 +111,48 @@ export async function sendPaperForReview(
             name,
             email
           )
-          `
-        )
+        `)
         .eq("role_name", "HOD")
         .eq("depart_id", departmentId)
         .single()
 
-      if (hodError) {
-        console.warn("Could not find HOD for department:", hodError)
-      } else if (hodData?.users?.email) {
-        // Send notification email to HOD
-        const emailResult = await sendPaperSubmissionNotificationToHOD(
-          facultyName,
-          subjectName,
-          subjectCode,
-          cieLabel,
-          hodData.users.email,
-          departmentName
-        )
-
-        if (!emailResult.success) {
-          console.warn("Failed to send HOD notification email:", emailResult.error)
-          // Don't fail the operation if email fails
-        } else {
-          console.log("HOD notification email sent successfully")
+      if (!hodError && (hodData as any)?.users?.email) {
+        const hodEmail = (hodData as any).users.email
+        if (!notificationTargets.some((target) => target.email === hodEmail)) {
+          notificationTargets.push({
+            email: hodEmail,
+            roleName: "HOD",
+          })
         }
+      }
+
+      if (notificationTargets.length === 0) {
+        console.warn("Could not find HOD or Course Owner for department/subject")
+      } else {
+        await Promise.all(
+          notificationTargets.map(async (target) => {
+            const emailResult = await sendPaperSubmissionNotificationToReviewer(
+              facultyName,
+              subjectName,
+              subjectCode,
+              cieLabel,
+              target.email,
+              departmentName,
+              target.roleName
+            )
+
+            if (!emailResult.success) {
+              console.warn(
+                `Failed to send ${target.roleName} notification email:`,
+                emailResult.error
+              )
+            } else {
+              console.log(
+                `${target.roleName} notification email sent successfully to ${target.email}`
+              )
+            }
+          })
+        )
       }
     }
 

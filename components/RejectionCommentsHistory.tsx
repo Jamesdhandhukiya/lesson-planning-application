@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle, XCircle } from "lucide-react"
 import { fetchRejectionComments } from "@/app/dashboard/actions/fetchForReview"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -26,6 +26,7 @@ interface RejectionCommentsHistoryProps {
 
 export function RejectionCommentsHistory({ submissionId }: RejectionCommentsHistoryProps) {
   const [comments, setComments] = useState<RejectionComment[]>([])
+  const [submissionStatus, setSubmissionStatus] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,6 +38,7 @@ export function RejectionCommentsHistory({ submissionId }: RejectionCommentsHist
         const result = await fetchRejectionComments(submissionId)
         if (result.success) {
           setComments((result.data as any) || [])
+          setSubmissionStatus((result as any).status || "")
         } else {
           setError(result.error || "Failed to load rejection comments")
         }
@@ -71,35 +73,96 @@ export function RejectionCommentsHistory({ submissionId }: RejectionCommentsHist
     )
   }
 
-  if (comments.length === 0) {
+  const [coPart, hodPart] = submissionStatus.includes("|") 
+    ? submissionStatus.split("|") 
+    : [submissionStatus, ""]
+
+  if (comments.length === 0 && coPart !== "rejected" && hodPart !== "rejected") {
     return null
   }
 
+  const isCOApproved = coPart === "approved"
+  const isHODApproved = hodPart === "approved"
+
   return (
-            <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <AlertCircle className="h-4 w-4 text-red-600" />
-        <p className="text-sm font-semibold text-gray-700">Rejection Reasons from HOD</p>
+    <div className="space-y-4 mt-2">
+      <div className="flex items-center gap-2 border-b pb-2">
+        <AlertCircle className="h-4 w-4 text-[#1A5CA1]" />
+        <h3 className="text-sm font-bold text-gray-800">Review Timeline</h3>
       </div>
-      {comments.map((comment) => (
-        <Card key={comment.id} className="border-red-200 bg-red-50">
-          <CardContent className="pt-4">
-            <div className="space-y-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-red-900">
-                    {Array.isArray(comment.users) ? comment.users[0]?.name : (comment.users as any)?.name || "HOD"}
-                  </p>
-                  <p className="text-xs text-red-700 mt-0.5">
-                    {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString()}
-                  </p>
+
+      <div className="space-y-4">
+        {/* Course Owner Status Row */}
+        <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+          isCOApproved ? "bg-green-50 border-green-200" : coPart === "rejected" ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"
+        }`}>
+          {isCOApproved ? (
+            <div className="bg-green-100 p-1.5 rounded-full"><CheckCircle className="h-4 w-4 text-green-600" /></div>
+          ) : coPart === "rejected" ? (
+            <div className="bg-red-100 p-1.5 rounded-full"><XCircle className="h-4 w-4 text-red-600" /></div>
+          ) : (
+            <div className="bg-gray-200 p-1.5 rounded-full"><div className="h-4 w-4" /></div>
+          )}
+          <div>
+            <p className={`text-sm font-semibold ${isCOApproved ? "text-green-900" : coPart === "rejected" ? "text-red-900" : "text-gray-900"}`}>
+              Course Owner Review
+            </p>
+            <p className="text-xs text-gray-600 mt-0.5">
+              Status: <span className="font-medium uppercase">{coPart || "Pending"}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* HOD Status Row */}
+        <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+          isHODApproved ? "bg-green-50 border-green-200" : hodPart === "rejected" ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"
+        }`}>
+          {isHODApproved ? (
+            <div className="bg-green-100 p-1.5 rounded-full"><CheckCircle className="h-4 w-4 text-green-600" /></div>
+          ) : hodPart === "rejected" ? (
+            <div className="bg-red-100 p-1.5 rounded-full"><XCircle className="h-4 w-4 text-red-600" /></div>
+          ) : (
+            <div className="bg-gray-200 p-1.5 rounded-full"><div className="h-4 w-4" /></div>
+          )}
+          <div>
+            <p className={`text-sm font-semibold ${isHODApproved ? "text-green-900" : hodPart === "rejected" ? "text-red-900" : "text-gray-900"}`}>
+              HOD Review
+            </p>
+            <p className="text-xs text-gray-600 mt-0.5">
+              Status: <span className="font-medium uppercase">{hodPart || "Pending"}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Rejection Comments (if any) */}
+        {comments.length > 0 ? (
+          <div className="pt-2">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Detailed Feedback</p>
+            <div className="space-y-3">
+              {comments.map((comment) => (
+                <div key={comment.id} className="relative pl-4 border-l-2 border-red-200 ml-2">
+                  <div className="absolute w-2.5 h-2.5 bg-red-400 rounded-full -left-[6px] top-1.5 border-2 border-white shadow-sm" />
+                  <div className="bg-white border rounded-md p-3 shadow-sm">
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="text-xs font-bold text-gray-800">
+                        {Array.isArray(comment.users) ? comment.users[0]?.name : (comment.users as any)?.name || "Reviewer"}
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        {new Date(comment.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-700 leading-relaxed italic">"{comment.comment}"</p>
+                  </div>
                 </div>
-              </div>
-              <p className="text-sm text-red-800 leading-relaxed">{comment.comment}</p>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      ))}
+          </div>
+        ) : (coPart === "rejected" || hodPart === "rejected") && (
+          <div className="rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            No feedback comments have been added yet for this rejected submission.
+          </div>
+        )}
+      </div>
     </div>
   )
 }

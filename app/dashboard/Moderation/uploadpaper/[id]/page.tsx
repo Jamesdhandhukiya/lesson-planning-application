@@ -607,20 +607,30 @@ export default function ModerationSubjectPage() {
                                             </Badge>
                                           )}
                                           {submission.status && submission.status !== 'submitted' && (
-                                            <Badge variant="outline" className="bg-yellow-100 text-yellow-700">
-                                              {submission.status}
+                                            <Badge variant="outline" className={
+                                              submission.status.includes("rejected") 
+                                              ? "bg-red-100 text-red-700" 
+                                              : submission.status.includes("approved") 
+                                                ? "bg-green-100 text-green-700" 
+                                                : "bg-yellow-100 text-yellow-700"
+                                            }>
+                                              {submission.status.includes("rejected") 
+                                                ? "revision required" 
+                                                : submission.status.includes("approved") 
+                                                  ? (submission.status.includes("|") && submission.status.split("|").every((s: string) => s === "approved") ? "fully approved" : "partially approved")
+                                                  : submission.status.replace("|", " / ")}
                                             </Badge>
                                           )}
                                         </div>
                                         <div className="text-xs text-gray-600">
                                           Submission #{submission.submission_order} • {new Date(submission.created_at).toLocaleDateString()} {new Date(submission.created_at).toLocaleTimeString()}
                                         </div>
-                                        {submission.feedback && (
+                                        {submission.feedback && submission.feedback.trim() !== "" && (
                                           <div className="text-xs text-gray-700 mt-1 bg-yellow-50 p-2 rounded border border-yellow-200">
                                             <span className="font-semibold">Feedback: </span>{submission.feedback}
                                           </div>
                                         )}
-                                        {submission.status === 'rejected' && (
+                                        {(submission.status?.includes('rejected') || submission.status?.includes('approved')) && (
                                           <div className="mt-3">
                                             <RejectionCommentsHistory submissionId={submission.id} />
                                           </div>
@@ -705,28 +715,6 @@ export default function ModerationSubjectPage() {
               }}
             >
               Send for Review
-            </Button>
-            <Button 
-              onClick={() => {
-                // Check if latest submission is approved
-                const latestSubmission = previousSubmissions[activeIndex]?.[0];
-                
-                if (!latestSubmission) {
-                  toast.error("Please upload a paper first");
-                  return;
-                }
-                
-                if (latestSubmission.status !== "approved") {
-                  toast.error("Paper must be accepted by HOD first before submitting");
-                  return;
-                }
-                
-                toast.success("Submitted successfully!");
-                // Add submit logic here
-              }}
-              disabled={!previousSubmissions[activeIndex]?.[0] || previousSubmissions[activeIndex]?.[0]?.status !== "approved"}
-            >
-              Submit
             </Button>
           </div>
 

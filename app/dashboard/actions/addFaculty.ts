@@ -10,6 +10,7 @@ export const addFaculty = async (formData: FormData) => {
     const subjectId = formData.get("subjectId") as string
     const academicYear = formData.get("academicYear") as string
     const division = formData.get("division") as string
+    const isCourseOwner = formData.get("isCourseOwner") === "true"
 
     const supabaseAdmin = createAdminClient()
     const supabase = await createClient()
@@ -82,7 +83,7 @@ export const addFaculty = async (formData: FormData) => {
     const { data: existingRole, error: roleCheckError } = await supabase
       .from("user_role")
       .select("*")
-      .eq("user_id", authUserId)
+      .eq("user_id", userData.id)
       .eq("role_name", "Faculty")
       .eq("depart_id", departId)
       .eq("subject_id", subjectId || null)
@@ -112,6 +113,20 @@ export const addFaculty = async (formData: FormData) => {
         await supabaseAdmin.auth.admin.deleteUser(authUserId)
       }
       return { success: false, error: roleError.message }
+    }
+
+    if (isCourseOwner && subjectId) {
+      const { error: coError } = await supabase.from("user_role").insert({
+        user_id: authUserId,
+        role_name: "Course Owner",
+        depart_id: departId,
+        subject_id: subjectId,
+        academic_year: academicYear,
+        division,
+      })
+      if (coError) {
+        console.error("Course owner role error:", coError)
+      }
     }
 
     return {
@@ -146,63 +161,101 @@ export const editFaculty = async (formData: FormData) => {
       index++
     }
 
+    const courseOwnerSubjectIds: string[] = []
+    let coIndex = 0
+    while (formData.has(`courseOwnerSubjectIds[${coIndex}]`)) {
+      const subjectId = formData.get(`courseOwnerSubjectIds[${coIndex}]`) as string
+      if (subjectId) {
+        courseOwnerSubjectIds.push(subjectId)
+      }
+      coIndex++
+    }
+
     if (subjectIds.length === 0) {
       return { success: false, error: "At least one subject must be selected" }
     }
 
     const supabase = await createClient()
 
+    // 1. Get the current user_role and user info
     const { data: currentRole, error: getCurrentError } = await supabase
       .from("user_role")
       .select("user_id, depart_id")
       .eq("id", id)
       .single()
 
-    if (getCurrentError) {
-      return { success: false, error: getCurrentError.message }
+    if (getCurrentError || !currentRole) {
+      return { success: false, error: "Record not found: " + (getCurrentError?.message || "") }
     }
 
-    const { data: userData, error: userError } = await supabase
+    // 2. Find the user systematically to get BOTH Postgres ID and Auth ID
+    const { data: userDataProfile, error: userFetchError } = await supabase
       .from("users")
-      .update({
-        name,
-        email,
-      })
-      .eq("auth_id", currentRole.user_id)
-      .select("*")
+      .select("id, auth_id")
+      .or(`id.eq.${currentRole.user_id},auth_id.eq.${currentRole.user_id}`)
       .single()
 
-    if (userError) {
-      return { success: false, error: userError.message }
+    if (userFetchError || !userDataProfile) {
+      return { success: false, error: "User not found: " + (userFetchError?.message || "") }
     }
 
+    const postgresUserId = userDataProfile.id;
+    const authUserId = userDataProfile.auth_id;
+
+    // 3. Update user contact info
+    const { error: userUpdateError } = await supabase
+      .from("users")
+      .update({ name, email })
+      .eq("id", postgresUserId)
+
+    if (userUpdateError) {
+      return { success: false, error: "Failed to update user profile: " + userUpdateError.message }
+    }
+
+    // 4. Delete existing roles (Faculty and Course Owner) for this user in this department
+    // Delete by BOTH possible IDs to be thorough during migration
     const { error: deleteError } = await supabase
       .from("user_role")
       .delete()
-      .eq("user_id", currentRole.user_id)
-      .eq("role_name", "Faculty")
+      .or(`user_id.eq.${postgresUserId},user_id.eq.${authUserId}`)
+      .in("role_name", ["Faculty", "Course Owner"])
       .eq("depart_id", currentRole.depart_id)
 
     if (deleteError) {
-      return { success: false, error: deleteError.message }
+      return { success: false, error: "Failed to clear old roles: " + deleteError.message }
     }
 
+    // 5. Insert new roles (always use Auth ID for the user_role table)
     const roleEntries = subjectIds.map((subjectId) => ({
-      user_id: currentRole.user_id,
+      user_id: authUserId,
       role_name: "Faculty",
       depart_id: currentRole.depart_id,
       subject_id: subjectId,
       academic_year: academicYear,
       division,
     }))
+    
+    courseOwnerSubjectIds.forEach((subjectId) => {
+      roleEntries.push({
+        user_id: authUserId,
+        role_name: "Course Owner",
+        depart_id: currentRole.depart_id,
+        subject_id: subjectId,
+        academic_year: academicYear,
+        division,
+      })
+    })
 
-    const { data: roleData, error: roleError } = await supabase.from("user_role").insert(roleEntries).select("*")
+    const { data: roleData, error: roleError } = await supabase
+      .from("user_role")
+      .insert(roleEntries)
+      .select("*")
 
     if (roleError) {
-      return { success: false, error: roleError.message }
+      return { success: false, error: "Failed to assign new roles: " + roleError.message }
     }
 
-    return { success: true, data: { user: userData, roles: roleData } }
+    return { success: true, data: { user: userDataProfile, roles: roleData } }
   } catch (error) {
     console.error("Unexpected error:", error)
     return { success: false, error: "An unexpected error occurred" }
@@ -217,7 +270,7 @@ export const deleteFaculty = async (userAuthId: string, departmentId: string) =>
       .from("user_role")
       .delete()
       .eq("user_id", userAuthId)
-      .eq("role_name", "Faculty")
+      .in("role_name", ["Faculty", "Course Owner"])
       .eq("depart_id", departmentId)
 
     if (roleDeleteError) {

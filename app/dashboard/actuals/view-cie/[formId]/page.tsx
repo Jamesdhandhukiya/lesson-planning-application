@@ -19,10 +19,10 @@ export default async function ViewActualCiePage(props: { params: paramsType }) {
   }
 
   // Try both approaches and see which one works
-  let userRoleData = null
-  let formData = null
-  let allCie = null
-  let departmentPsoPeoData = null
+  let userRoleData: any = null
+  let formData: any = null
+  let allCie: any[] | null = null
+  let departmentPsoPeoData: any = null
 
   // First, try the UUID approach (for user_role table)
   try {
