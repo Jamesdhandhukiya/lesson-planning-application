@@ -101,8 +101,8 @@ export default function ModerationPage() {
 
           </div>
 
-        ) : currentRole.role_name === "HOD" ? (
-          // ================== HOD VIEW (ONE BOX ONLY) ==================
+        ) : (currentRole.role_name === "HOD" || currentRole.role_name === "Course Owner") ? (
+          // ================== HOD & COURSE OWNER VIEW ==================
           <div className="mt-6 flex flex-col gap-6">
 
             <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm w-full">
@@ -136,7 +136,7 @@ export default function ModerationPage() {
           <div className="text-center py-8">
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 max-w-md mx-auto">
               <h3 className="text-lg font-semibold text-[#1A5CA1] mb-2">Not Allowed</h3>
-              <p className="text-gray-600 mb-4">Only Faculty & HOD have access.</p>
+              <p className="text-gray-600 mb-4">Only Faculty, HOD, and Course Owner have access.</p>
             </div>
           </div>
         )}

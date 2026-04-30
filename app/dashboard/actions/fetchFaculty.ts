@@ -30,6 +30,7 @@ export async function fetchFaculty() {
       .select(`
         *,
         users (
+          id,
           auth_id,
           name,
           email,

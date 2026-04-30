@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, Eye, Download, CheckCircle, XCircle, FileText } from "lucide-react"
+import { Loader2, Eye, Download, CheckCircle, XCircle, FileText, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import { fetchLessonPlanBySubjectId } from "@/app/dashboard/actions/fetchLessonP
 import { getSignedUrl } from "@/app/dashboard/actions/getSignedUrl"
 import { ExamDetailsModal } from "@/components/modals/ExamDetailsModal"
 import { RejectionCommentModal } from "@/components/modals/RejectionCommentModal"
+import { RejectionCommentsHistory } from "@/components/RejectionCommentsHistory"
 
 interface Submission {
   id: string
@@ -37,9 +38,10 @@ interface LessonPlanData {
 
 interface ReviewAllSubmissionsProps {
   userId: string
+  roleName: string
 }
 
-export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
+export function ReviewAllSubmissions({ userId, roleName }: ReviewAllSubmissionsProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [lessonPlanCache, setLessonPlanCache] = useState<Record<string, LessonPlanData>>({})
@@ -49,16 +51,17 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
   const [rejectLoading, setRejectLoading] = useState<string | null>(null)
   const [showRejectionModal, setShowRejectionModal] = useState(false)
   const [rejectionSubmission, setRejectionSubmission] = useState<Submission | null>(null)
+  const [expandedFeedbackSubmissionId, setExpandedFeedbackSubmissionId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadSubmissions = async () => {
       setIsLoading(true)
       try {
         console.log("Loading submissions for user:", userId)
-        const result = await fetchPapersForReview(userId)
-        console.log("Fetch result:", result)
+        const result = await fetchPapersForReview(userId, roleName)
         if (result.success) {
-          console.log("Submissions loaded:", result.data?.length)
+          console.log("Submissions load success. Debug:", result.debug)
+          console.log("Submissions loaded count:", result.data?.length)
           setSubmissions(result.data as Submission[])
         } else {
           console.log("Fetch error:", result.error)
@@ -75,7 +78,7 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
     }
 
     loadSubmissions()
-  }, [userId])
+  }, [userId, roleName])
 
   const loadLessonPlan = async (subjectId: string) => {
     if (lessonPlanCache[subjectId]) return lessonPlanCache[subjectId]
@@ -135,12 +138,16 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
   const handleApprove = async (submission: Submission) => {
     setApproveLoading(submission.id)
     try {
-      const result = await updateSubmissionStatus(submission.id, "approved")
+      const statusValue = roleName === "Course Owner" ? "CO:approved" : "HOD:approved"
+      const result = await updateSubmissionStatus(submission.id, statusValue)
       if (result.success) {
         toast.success("Paper approved successfully!")
+        // Get the updated composite status from the response
+        const newStatus = (result.data as any)?.[0]?.status || (statusValue.includes("CO:") ? `${statusValue.replace("CO:", "")}|sent-for-review` : `sent-for-review|${statusValue.replace("HOD:", "")}`)
+        
         setSubmissions((prev) =>
           prev.map((s) =>
-            s.id === submission.id ? { ...s, status: "approved" } : s
+            s.id === submission.id ? { ...s, status: newStatus } : s
           )
         )
       } else {
@@ -161,12 +168,14 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
 
   const handleRejectionCommentSubmit = async (submissionId: string, comment: string) => {
     try {
-      const result = await rejectSubmissionWithComment(submissionId, comment, userId)
+      const statusValue = roleName === "Course Owner" ? "CO:rejected" : "HOD:rejected"
+      const result = await rejectSubmissionWithComment(submissionId, comment, userId, statusValue)
       if (result.success) {
         // Update local state
+        const newStatus = (result.data as any)?.[0]?.status || (statusValue.includes("CO:") ? `${statusValue.replace("CO:", "")}|sent-for-review` : `sent-for-review|${statusValue.replace("HOD:", "")}`)
         setSubmissions((prev) =>
           prev.map((s) =>
-            s.id === submissionId ? { ...s, status: "rejected" } : s
+            s.id === submissionId ? { ...s, status: newStatus } : s
           )
         )
         return { success: true }
@@ -177,6 +186,68 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
       console.error("Error rejecting paper:", error)
       return { success: false, error: "An error occurred" }
     }
+  }
+
+  const parseCompositeStatus = (status: string) => {
+    const normalize = (value: string) => {
+      if (!value) return "pending"
+      if (value.startsWith("CO:")) return value.replace(/^CO:/, "")
+      if (value.startsWith("HOD:")) return value.replace(/^HOD:/, "")
+      return value
+    }
+
+    if (status?.includes("|")) {
+      const [left, right] = status.split("|")
+      return {
+        coStatus: normalize(left || "pending"),
+        hodStatus: normalize(right || "pending"),
+      }
+    }
+
+    if (status?.startsWith("CO:")) {
+      return { coStatus: normalize(status), hodStatus: "pending" }
+    }
+
+    if (status?.startsWith("HOD:")) {
+      return { coStatus: "pending", hodStatus: normalize(status) }
+    }
+
+    return { coStatus: normalize(status || "pending"), hodStatus: normalize(status || "pending") }
+  }
+
+  const getReviewerTag = (reviewer: "CO" | "HOD", status: string) => {
+    const normalized = status === "sent-for-review" || status === "submitted" || status === "pending" ? "pending" : status
+    if (normalized === "approved") {
+      return {
+        icon: CheckCircle,
+        label: reviewer,
+        title: `${reviewer} accepted`,
+        badgeClass: "bg-green-100 text-green-700",
+      }
+    }
+    if (normalized === "rejected") {
+      return {
+        icon: XCircle,
+        label: reviewer,
+        title: `${reviewer} rejected`,
+        badgeClass: "bg-red-100 text-red-700",
+      }
+    }
+    return {
+      icon: Clock,
+      label: reviewer,
+      title: `${reviewer} review pending`,
+      badgeClass: "bg-gray-100 text-gray-700",
+    }
+  }
+
+  const getRoleStatus = (status: string) => {
+    if (!status) return "pending"
+    const parts = status.split("|")
+    if (parts.length === 2) {
+      return roleName === "Course Owner" ? parts[0] : parts[1]
+    }
+    return status // Fallback for old simple status
   }
 
   if (isLoading) {
@@ -246,21 +317,39 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
                           </div>
 
                           {/* Middle: Status & Info */}
-                          <div className="flex items-center gap-3">
-                            <Badge
-                              className={
-                                submission.status === "approved"
-                                  ? "bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700"
-                                  : submission.status === "rejected"
-                                    ? "bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700"
-                                    : submission.status === "sent-for-review"
-                                      ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-700"
-                                      : "bg-gray-100 text-gray-700 hover:bg-gray-100 hover:text-gray-700"
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {(() => {
+                              const { coStatus, hodStatus } = parseCompositeStatus(submission.status)
+                              const coTag = getReviewerTag("CO", coStatus)
+                              const hodTag = getReviewerTag("HOD", hodStatus)
+                              const COCmp = coTag.icon
+                              const HODCmp = hodTag.icon
+
+                              const bothPending = coStatus === "pending" && hodStatus === "pending"
+
+                              if (bothPending) {
+                                return (
+                                  <Badge title="Pending review by CO and HOD" className="bg-gray-100 text-gray-700 text-xs py-1 px-2 inline-flex items-center gap-1">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    <span>Pending</span>
+                                  </Badge>
+                                )
                               }
-                            >
-                              {submission.status || "pending"}
-                            </Badge>
-                            <span className="text-xs text-gray-500">
+
+                              return (
+                                <>
+                                  <Badge title={coTag.title} className={`${coTag.badgeClass} text-xs py-1 px-2 inline-flex items-center gap-1`}>
+                                    <COCmp className="h-3.5 w-3.5" />
+                                    <span>{coTag.label}</span>
+                                  </Badge>
+                                  <Badge title={hodTag.title} className={`${hodTag.badgeClass} text-xs py-1 px-2 inline-flex items-center gap-1`}>
+                                    <HODCmp className="h-3.5 w-3.5" />
+                                    <span>{hodTag.label}</span>
+                                  </Badge>
+                                </>
+                              )
+                            })()}
+                            <span className="text-xs text-gray-500 mt-1">
                               {new Date(submission.created_at).toLocaleDateString()}
                             </span>
                           </div>
@@ -284,7 +373,11 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
                               <Eye className="h-3 w-3" />
                             </Button>
 
-                            {submission.status === "sent-for-review" && (
+                            {((roleName === "Course Owner" 
+                                ? (submission.status.split("|")[0] || submission.status) 
+                                : (submission.status.split("|")[1] || (submission.status.includes("|") ? "sent-for-review" : submission.status))) === "sent-for-review" || 
+                              (roleName === "Course Owner" && (submission.status.split("|")[0] || submission.status) === "submitted") ||
+                              (roleName === "HOD" && (submission.status.split("|")[1] || submission.status) === "submitted")) && (
                               <>
                                 <Button
                                   size="sm"
@@ -313,8 +406,31 @@ export function ReviewAllSubmissions({ userId }: ReviewAllSubmissionsProps) {
                                 </Button>
                               </>
                             )}
+
+                            {(() => {
+                              const { coStatus, hodStatus } = parseCompositeStatus(submission.status)
+                              const isRejectedByAny = coStatus === "rejected" || hodStatus === "rejected"
+                              if (!isRejectedByAny) return null
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs px-2 py-1"
+                                  onClick={() => setExpandedFeedbackSubmissionId(
+                                    expandedFeedbackSubmissionId === submission.id ? null : submission.id
+                                  )}
+                                >
+                                  {expandedFeedbackSubmissionId === submission.id ? "Hide Feedback" : "View Feedback"}
+                                </Button>
+                              )
+                            })()}
                           </div>
                         </div>
+                        {expandedFeedbackSubmissionId === submission.id && (
+                          <div className="mt-3">
+                            <RejectionCommentsHistory submissionId={submission.id} />
+                          </div>
+                        )}
                       </div>
                     )
                   })}

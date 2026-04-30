@@ -10,20 +10,123 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-export async function fetchPapersForReview(hodAuthId: string) {
+export async function fetchPapersForReview(authId: string, roleName: string = "HOD") {
   try {
-    if (!hodAuthId) {
-      return { success: false, error: "HOD auth ID is required" }
+    if (!authId) {
+      return { success: false, error: "Auth ID is required" }
     }
 
-    console.log("Fetching papers for HOD auth_id:", hodAuthId)
+    const normalizedRole = roleName?.trim()
+    console.log(`DEBUG: normalizedRole: "${normalizedRole}"`)
+
+    if (normalizedRole === "Course Owner") {
+      // 1. Get the postgres user ID from the auth ID first to be safe
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", authId)
+        .single()
+
+      if (userError || !userData) {
+        console.error("Error finding user for Course Owner check:", userError)
+        return { success: false, error: "Unable to identify user profile" }
+      }
+
+      console.log(`Found Postgres user ID ${userData.id} for auth_id ${authId}`)
+
+      // 2. Get all subject IDs assigned to this Course Owner using BOTH IDs to be safe
+      const { data: coRoles, error: coError } = await supabase
+        .from("user_role")
+        .select("subject_id")
+        .eq("role_name", "Course Owner")
+        .or(`user_id.eq.${userData.id},user_id.eq.${authId}`)
+
+      if (coError) {
+        console.error("Error fetching Course Owner roles:", coError)
+        return { success: false, error: "Unable to verify Course Owner assignments" }
+      }
+
+      console.log(`DEBUG: Found ${coRoles?.length} Course Owner roles for user:`, coRoles)
+
+      const subjectIds = coRoles
+        .map((r: any) => r.subject_id)
+        .filter(Boolean)
+
+      console.log(`DEBUG: Found ${subjectIds.length} subject IDs for Course Owner:`, subjectIds)
+
+      if (subjectIds.length === 0) {
+        console.log("DEBUG: No subjects found for this Course Owner.")
+        return { success: true, data: [] }
+      }
+
+      // 3. Fetch submissions for these subjects
+      console.log(`DEBUG: Querying exam_paper_submissions for subjects in:`, subjectIds)
+      const { data: submissions, error: submissionsError } = await supabase
+        .from("exam_paper_submissions")
+        .select(`
+          id,
+          created_at,
+          updated_at,
+          subject_id,
+          faculty_id,
+          cie_index,
+          exam_name,
+          file_name,
+          file_type,
+          file_size,
+          storage_path,
+          submission_order,
+          is_latest,
+          status,
+          feedback,
+          subjects (
+            id,
+            name,
+            code,
+            semester,
+            department_id,
+            departments (
+              id,
+              name,
+              abbreviation_depart
+            )
+          ),
+          users (
+            id,
+            name,
+            email,
+            auth_id
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .in("subject_id", subjectIds)
+
+      if (submissionsError) {
+        console.error("Error fetching Course Owner submissions:", submissionsError)
+        return { success: false, error: "Failed to fetch submissions for review" }
+      }
+
+      console.log(`DEBUG: Final submissions found: ${submissions?.length}`)
+
+      return { 
+        success: true, 
+        data: submissions || [],
+        debug: {
+          roleUsed: "Course Owner",
+          postgresUserId: userData.id,
+          authId: authId,
+          subjectIds: subjectIds,
+          totalSubmissionsFound: submissions?.length
+        }
+      }
+    }
 
     // Get HOD role directly by joining with users table
     const { data: hodRoleData, error: hodRoleError } = await supabase
       .from("user_role")
       .select("id, user_id, depart_id, users!inner(id, auth_id)")
       .eq("role_name", "HOD")
-      .eq("users.auth_id", hodAuthId)
+      .eq("users.auth_id", authId)
 
     if (hodRoleError) {
       console.error("Error checking HOD role:", hodRoleError)
@@ -31,7 +134,7 @@ export async function fetchPapersForReview(hodAuthId: string) {
     }
 
     if (!hodRoleData || hodRoleData.length === 0) {
-      console.log("No HOD role found for auth_id:", hodAuthId)
+      console.log("No HOD role found for auth_id:", authId)
       return { success: false, error: "User is not assigned as HOD" }
     }
 
@@ -98,7 +201,15 @@ export async function fetchPapersForReview(hodAuthId: string) {
 
     console.log("Submissions filtered by department:", filteredSubmissions?.length)
 
-    return { success: true, data: filteredSubmissions || [] }
+    return { 
+      success: true, 
+      data: filteredSubmissions || [],
+      debug: {
+        roleUsed: "HOD",
+        departmentId: departmentId,
+        totalFound: filteredSubmissions?.length
+      }
+    }
   } catch (error) {
     console.error("Error in fetchPapersForReview:", error)
     return {
@@ -127,6 +238,7 @@ export async function updateSubmissionStatus(
         cie_index,
         subject_id,
         faculty_id,
+        status,
         subjects (
           id,
           name,
@@ -153,7 +265,25 @@ export async function updateSubmissionStatus(
       return { success: false, error: "Failed to fetch submission details" }
     }
 
-    const updateData: any = { status }
+    // Separate status logic: status field will store "CO_STATUS|HOD_STATUS"
+    // Default is "sent-for-review|sent-for-review" (implicit if it's just one value)
+    let currentStatus = submissionData.status || "sent-for-review"
+    let [coStatus, hodStatus] = currentStatus.includes("|") 
+      ? currentStatus.split("|") 
+      : [currentStatus, currentStatus]
+
+    if (status.startsWith("CO:")) {
+      coStatus = status.replace("CO:", "")
+    } else if (status.startsWith("HOD:")) {
+      hodStatus = status.replace("HOD:", "")
+    } else {
+      // Legacy or direct update
+      coStatus = status
+      hodStatus = status
+    }
+
+    const newStatus = `${coStatus}|${hodStatus}`
+    const updateData: any = { status: newStatus }
     if (feedback) {
       updateData.feedback = feedback
     }
@@ -169,14 +299,18 @@ export async function updateSubmissionStatus(
       return { success: false, error: "Failed to update submission status" }
     }
 
-    // Send approval email if status is 'accepted' or 'approved' (UI uses 'approved')
-    if (status === "accepted" || status === "approved") {
-      const facultyName = submissionData.users?.name || "Faculty"
-      const facultyEmail = submissionData.users?.email || ""
-      const subjectName = submissionData.subjects?.name || "Unknown Subject"
-      const subjectCode = submissionData.subjects?.code || "N/A"
-      const cieLabel = typeof submissionData.cie_index === "number" ? `CIE ${submissionData.cie_index + 1}` : (submissionData.exam_name || "CIE")
-      const departmentName = submissionData.subjects?.departments?.name || "Department"
+    // Send approval email if status is 'accepted' or 'approved' (handling prefixes like CO:approved)
+    const normalizedStatus = status.toLowerCase()
+    if (normalizedStatus.includes("accepted") || normalizedStatus.includes("approved")) {
+      const anySubData = submissionData as any;
+      const facultyName = anySubData.users?.name || "Faculty"
+      const facultyEmail = anySubData.users?.email || ""
+      const subjectName = anySubData.subjects?.name || "Unknown Subject"
+      const subjectCode = anySubData.subjects?.code || "N/A"
+      const cieLabel = typeof anySubData.cie_index === "number" ? `CIE ${anySubData.cie_index + 1}` : (anySubData.exam_name || "CIE")
+      const departmentName = anySubData.subjects?.departments?.name || "Department"
+
+      const reviewerRole = status.startsWith("CO:") ? "Course Owner" : (status.startsWith("HOD:") ? "HOD" : "HOD")
 
       const emailResult = await sendApprovalNotificationToFaculty(
         facultyName,
@@ -185,7 +319,8 @@ export async function updateSubmissionStatus(
         subjectCode,
         cieLabel,
         departmentName,
-        feedback
+        feedback,
+        reviewerRole
       )
 
       if (!emailResult.success) {
@@ -209,7 +344,8 @@ export async function updateSubmissionStatus(
 export async function rejectSubmissionWithComment(
   submissionId: string,
   comment: string,
-  hodAuthId: string
+  hodAuthId: string,
+  status: string = "rejected"
 ) {
   try {
     if (!submissionId || !comment.trim() || !hodAuthId) {
@@ -237,6 +373,7 @@ export async function rejectSubmissionWithComment(
         cie_index,
         subject_id,
         faculty_id,
+        status,
         subjects (
           id,
           name,
@@ -263,10 +400,26 @@ export async function rejectSubmissionWithComment(
       return { success: false, error: "Failed to fetch submission details" }
     }
 
-    // Update submission status to rejected
+    // Handle composite status logic
+    let currentStatus = (submissionData as any).status || "sent-for-review"
+    let [coStatus, hodStatus] = currentStatus.includes("|") 
+      ? currentStatus.split("|") 
+      : [currentStatus, currentStatus]
+
+    if (status.startsWith("CO:")) {
+      coStatus = status.replace("CO:", "")
+    } else if (status.startsWith("HOD:")) {
+      hodStatus = status.replace("HOD:", "")
+    } else {
+      coStatus = status
+      hodStatus = status
+    }
+    const newStatus = `${coStatus}|${hodStatus}`
+
+    // Update submission status to rejected (using composite status)
     const { error: updateError } = await supabase
       .from("exam_paper_submissions")
-      .update({ status: "rejected" })
+      .update({ status: newStatus })
       .eq("id", submissionId)
 
     if (updateError) {
@@ -293,13 +446,15 @@ export async function rejectSubmissionWithComment(
     }
 
     // Send rejection email to faculty with HOD comments
-    const facultyName = submissionData.users?.name || "Faculty"
-    const facultyEmail = submissionData.users?.email || ""
-    const subjectName = submissionData.subjects?.name || "Unknown Subject"
-    const subjectCode = submissionData.subjects?.code || "N/A"
-    const cieLabel = typeof submissionData.cie_index === "number" ? `CIE ${submissionData.cie_index + 1}` : (submissionData.exam_name || "CIE")
-    const departmentName = submissionData.subjects?.departments?.name || "Department"
+    const anySubData = submissionData as any;
+    const facultyName = anySubData.users?.name || "Faculty"
+    const facultyEmail = anySubData.users?.email || ""
+    const subjectName = anySubData.subjects?.name || "Unknown Subject"
+    const subjectCode = anySubData.subjects?.code || "N/A"
+    const cieLabel = typeof anySubData.cie_index === "number" ? `CIE ${anySubData.cie_index + 1}` : (anySubData.exam_name || "CIE")
+    const departmentName = anySubData.subjects?.departments?.name || "Department"
     const hodName = hodData.name || "HOD"
+    const reviewerRole = status.startsWith("CO:") ? "Course Owner" : (status.startsWith("HOD:") ? "HOD" : "HOD")
 
     const emailResult = await sendRejectionNotificationToFaculty(
       facultyName,
@@ -309,7 +464,8 @@ export async function rejectSubmissionWithComment(
       cieLabel,
       departmentName,
       hodName,
-      comment.trim()
+      comment.trim(),
+      reviewerRole
     )
 
     if (!emailResult.success) {
@@ -354,12 +510,18 @@ export async function fetchRejectionComments(submissionId: string) {
       .eq("is_visible_to_faculty", true)
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Error fetching rejection comments:", error)
-      return { success: false, error: "Failed to fetch comments" }
-    }
+    // Also fetch the current status of the submission to check for approvals
+    const { data: submission, error: subError } = await supabase
+      .from("exam_paper_submissions")
+      .select("status")
+      .eq("id", submissionId)
+      .single()
 
-    return { success: true, data: comments || [] }
+    return { 
+      success: true, 
+      data: comments || [],
+      status: submission?.status || "pending"
+    }
   } catch (error) {
     console.error("Error in fetchRejectionComments:", error)
     return {

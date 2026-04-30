@@ -17,34 +17,35 @@ const isTestMode = () => process.env.USE_TEST_EMAILS === "true"
  * Send email to HOD when faculty submits paper for review
  * Department-based mapping ensures only relevant HOD receives notification
  */
-export async function sendPaperSubmissionNotificationToHOD(
+export async function sendPaperSubmissionNotificationToReviewer(
   facultyName: string,
   subjectName: string,
   subjectCode: string,
   cieLabel: string,
-  hodEmail: string,
-  departmentName: string
+  reviewerEmail: string,
+  departmentName: string,
+  reviewerRole: string = "HOD"
 ) {
   try {
     // Use test email if in development mode
-    const toEmail = isTestMode() ? TEST_EMAILS.hod : hodEmail
+    const toEmail = isTestMode() ? TEST_EMAILS.hod : reviewerEmail
 
     if (!toEmail || toEmail === "test.hod@example.com" && !isTestMode()) {
-      console.warn("HOD email not configured or invalid")
-      return { success: false, error: "HOD email not available" }
+      console.warn(`${reviewerRole} email not configured or invalid`)
+      return { success: false, error: `${reviewerRole} email not available` }
     }
 
-    const subject = `New Paper Submission - ${subjectName} (${subjectCode}) - ${cieLabel}`
+    const subject = `New Paper Submission for ${reviewerRole} Review - ${subjectName} (${subjectCode}) - ${cieLabel}`
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #f0f4f8; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
           <h2 style="color: #1a3a52; margin: 0;">New Paper Submission for Review</h2>
         </div>
         
-        <p style="color: #333; font-size: 16px; line-height: 1.6;">Dear HOD,</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">Dear ${reviewerRole},</p>
         
         <p style="color: #555; font-size: 15px; line-height: 1.6;">
-          Faculty member <strong>${facultyName}</strong> has submitted an exam paper of <strong>${subjectName} (${subjectCode})</strong> for  
+          Faculty member <strong>${facultyName}</strong> has submitted an exam paper of <strong>${subjectName} (${subjectCode})</strong> for
           verification in the <strong>${departmentName}</strong> department.
         </p>
         
@@ -78,7 +79,7 @@ export async function sendPaperSubmissionNotificationToHOD(
     }
 
     console.log(
-      `[${isTestMode() ? "TEST" : "PRODUCTION"}] HOD notification sent to ${toEmail}`,
+      `[${isTestMode() ? "TEST" : "PRODUCTION"}] ${reviewerRole} notification sent to ${toEmail}`,
       data
     )
     return { success: true, data }
@@ -102,7 +103,8 @@ export async function sendApprovalNotificationToFaculty(
   subjectCode: string,
   cieLabel: string,
   departmentName: string,
-  feedback?: string
+  feedback?: string,
+  reviewerRole: string = "HOD"
 ) {
   try {
     // Use test email if in development mode
@@ -113,11 +115,11 @@ export async function sendApprovalNotificationToFaculty(
       return { success: false, error: "Faculty email not available" }
     }
 
-    const subject = `Paper Approved - ${subjectName} (${subjectCode}) - ${cieLabel}`
+    const subject = `Paper Approved by ${reviewerRole} - ${subjectName} (${subjectCode}) - ${cieLabel}`
     const feedbackSection = feedback
       ? `
         <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 15px;">Feedback from HOD:</p>
+          <p style="margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 15px;">Feedback from ${reviewerRole}:</p>
           <p style="margin: 0; color: #555; font-size: 14px; white-space: pre-wrap;">${feedback}</p>
         </div>
       `
@@ -133,7 +135,7 @@ export async function sendApprovalNotificationToFaculty(
         
         <p style="color: #555; font-size: 15px; line-height: 1.6;">
           Your exam paper for <strong>${subjectName} (${subjectCode})</strong> (${departmentName}) has been <strong style="color: #28a745;">ACCEPTED</strong> 
-          by the Head of Department.
+          by the <strong>${reviewerRole}</strong>.
         </p>
         
         <p style="color: #555; font-size: 15px; line-height: 1.6;">
@@ -192,8 +194,9 @@ export async function sendRejectionNotificationToFaculty(
   subjectCode: string,
   cieLabel: string,
   departmentName: string,
-  hodName: string,
-  comments: string
+  reviewerName: string,
+  comments: string,
+  reviewerRole: string = "HOD"
 ) {
   try {
     // Use test email if in development mode
@@ -204,7 +207,7 @@ export async function sendRejectionNotificationToFaculty(
       return { success: false, error: "Faculty email not available" }
     }
 
-    const subject = `Revision Required - ${subjectName} (${subjectCode}) - ${cieLabel}`
+    const subject = `Revision Required (${reviewerRole}) - ${subjectName} (${subjectCode}) - ${cieLabel}`
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #f8d7da; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -215,7 +218,7 @@ export async function sendRejectionNotificationToFaculty(
         
         <p style="color: #555; font-size: 15px; line-height: 1.6;">
           Your exam paper for <strong>${subjectName} (${subjectCode})</strong> (${departmentName}) has been <strong style="color: #dc3545;">REJECTED</strong> 
-          by the Head of Department and requires revision.
+          by the <strong>${reviewerRole}</strong> and requires revision.
         </p>
         
         <p style="color: #555; font-size: 15px; line-height: 1.6;">
@@ -223,7 +226,7 @@ export async function sendRejectionNotificationToFaculty(
         </p>
         
         <div style="background-color: #f8d7da; padding: 15px; border-left: 4px solid #dc3545; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0; color: #721c24; font-weight: bold; font-size: 15px;">HOD Remarks (${hodName}):</p>
+          <p style="margin: 0 0 10px 0; color: #721c24; font-weight: bold; font-size: 15px;">${reviewerRole} Remarks (${reviewerName}):</p>
           <p style="margin: 0; color: #555; font-size: 14px; white-space: pre-wrap; line-height: 1.6;">${comments}</p>
         </div>
         

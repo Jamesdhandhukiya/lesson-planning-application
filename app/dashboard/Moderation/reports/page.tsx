@@ -8,7 +8,7 @@ import { useDashboardContext } from "@/context/DashboardContext"
 import { ReviewAllSubmissions } from "@/components/ReviewAllSubmissions"
 
 export default function ModerationReportsPage() {
-  const { userData } = useDashboardContext()
+  const { userData, currentRole } = useDashboardContext()
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function ModerationReportsPage() {
 
       {/* Main Content */}
       <div className="mt-6">
-        <ReviewAllSubmissions userId={userData.auth_id} />
+        <ReviewAllSubmissions userId={userData.auth_id} roleName={currentRole.role_name} />
       </div>
     </div>
   )

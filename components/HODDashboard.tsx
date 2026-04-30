@@ -53,6 +53,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { supabase } from "@/utils/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -129,10 +130,11 @@ const addFacultySchema = z.object({
   division: z.enum(["Division 1", "Division 2", "Division 1 & Division 2"], {
     required_error: "Please select a division",
   }),
+  isCourseOwner: z.boolean().default(false).optional(),
 });
 
 const editFacultySchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1, "ID is required"),
   email: z.string().email("Please enter a valid email address"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   departId: z.string().min(1, "Department ID is required"),
@@ -141,6 +143,7 @@ const editFacultySchema = z.object({
   division: z.enum(["Division 1", "Division 2", "Division 1 & Division 2"], {
     required_error: "Please select a division",
   }),
+  courseOwnerSubjectIds: z.array(z.string()).default([]),
 });
 
 const addSubjectSchema = z
@@ -222,6 +225,7 @@ export default function HODDashboard() {
     subjectId: "",
     academicYear: new Date().getFullYear().toString(),
     division: "Division 1 & Division 2" as const,
+    isCourseOwner: false,
   });
 
   const getDefaultEditFacultyValues = () => ({
@@ -232,6 +236,7 @@ export default function HODDashboard() {
     subjectIds: [] as string[],
     academicYear: new Date().getFullYear().toString(),
     division: "Division 1 & Division 2" as const,
+    courseOwnerSubjectIds: [] as string[],
   });
 
   const getDefaultSubjectValues = () => ({
@@ -304,6 +309,13 @@ export default function HODDashboard() {
   };
 
   // PSO/PEO Management Functions
+  useEffect(() => {
+    if (!editFacultyDialogOpen) {
+      setSelectedFaculty(null);
+      editFacultyForm.reset(getDefaultEditFacultyValues());
+    }
+  }, [editFacultyDialogOpen]);
+
   const addPsoItem = () => {
     const newId = (psoItems.length + 1).toString();
     const newLabel = `PSO${psoItems.length + 1}`;
@@ -449,6 +461,10 @@ export default function HODDashboard() {
         value.forEach((subjectId, index) => {
           formData.append(`subjectIds[${index}]`, subjectId);
         });
+      } else if (key === "courseOwnerSubjectIds" && Array.isArray(value)) {
+        value.forEach((subjectId, index) => {
+          formData.append(`courseOwnerSubjectIds[${index}]`, subjectId);
+        });
       } else if (value !== undefined && value !== null) {
         formData.append(key, value.toString());
       }
@@ -485,6 +501,11 @@ export default function HODDashboard() {
     setSelectedFaculty(facultyMember);
 
     // Get all subject IDs for this faculty member by filtering the main faculty array
+    // Get course owner subject IDs as well via an API call or filter from the roles state.
+    // Wait, the `faculty` state only stores "Faculty" roles. We need to fetch course owners or derive them.
+    // Since we don't have it locally, we should probably fetch it, or if it is already in the main `currentRole` context...
+    // Let's assume the backend will handle overwriting correctly if we provide the new ones. But we need to prepopulate it.
+    // If we can't easily prepopulate it here without fetching from DB, we'll try to find if it exists in another state.
     const facultySubjects = faculty.filter(
       (f) => f.users?.email === facultyMember.users?.email
     );
@@ -492,21 +513,47 @@ export default function HODDashboard() {
       .map((f) => f.subjects?.id)
       .filter(Boolean) as string[];
 
+    // Open immediately with basic data
     editFacultyForm.reset({
       id: facultyMember.id || "",
       email: facultyMember.users?.email || "",
       name: facultyMember.users?.name || "",
       departId: facultyMember.depart_id || "",
       subjectIds: subjectIds,
-      academicYear:
-        facultyMember.academic_year || new Date().getFullYear().toString(),
-      division:
-        (facultyMember.division as
-          | "Division 1"
-          | "Division 2"
-          | "Division 1 & Division 2") || "Division 1 & Division 2",
+      courseOwnerSubjectIds: [], // Default empty until loaded
+      academicYear: facultyMember.academic_year || new Date().getFullYear().toString(),
+      division: (facultyMember.division as any) || "Division 1 & Division 2",
     });
     setEditFacultyDialogOpen(true);
+
+    const getRolesFromDb = async () => {
+      try {
+        // Try both Postgres ID and Auth ID just in case
+        const userId = facultyMember.users?.id || facultyMember.users?.auth_id;
+        if (!userId) return [];
+        
+        const { data, error } = await supabase
+          .from("user_role")
+          .select("subject_id")
+          .or(`user_id.eq.${userId},user_id.eq.${facultyMember.users?.auth_id}`)
+          .eq("role_name", "Course Owner");
+        
+        if (error) {
+          console.error("Error fetching Course Owner roles:", error);
+          return [];
+        }
+        return data?.map((d) => d.subject_id).filter(Boolean) || [];
+      } catch (err) {
+        console.error("Unexpected error in getRolesFromDb:", err);
+        return [];
+      }
+    };
+
+    getRolesFromDb().then((coSubjectIds) => {
+      // Update only the specific field without resetting the whole form 
+      // which might overwrite user changes if they were fast
+      editFacultyForm.setValue("courseOwnerSubjectIds", coSubjectIds as string[]);
+    });
   };
 
   const handleDeleteFaculty = (faculty: User_Role) => {
@@ -878,6 +925,26 @@ export default function HODDashboard() {
                                     </SelectContent>
                                   </Select>
                                   <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={facultyForm.control}
+                              name="isCourseOwner"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4 w-auto flex-shrink-0">
+                                  <FormControl>
+                                    <Checkbox
+                                      className="cursor-pointer"
+                                      checked={field.value || false}
+                                      onCheckedChange={field.onChange}
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none cursor-pointer">
+                                    <FormLabel className="cursor-pointer text-sm">
+                                      Course Owner
+                                    </FormLabel>
+                                  </div>
                                 </FormItem>
                               )}
                             />
@@ -1531,34 +1598,67 @@ export default function HODDashboard() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subjects (Select Multiple)</FormLabel>
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                    <div className="flex flex-col gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
                       {subjects.map((subject) => (
                         <div
                           key={subject.id}
-                          className="flex items-center space-x-2"
+                          className="flex items-center justify-between space-x-2 border-b pb-2 last:border-0 last:pb-0"
                         >
-                          <Checkbox
-                            id={subject.id}
-                            checked={(field.value || []).includes(subject.id)}
-                            onCheckedChange={(checked) => {
-                              const currentValues = field.value || [];
-                              if (checked) {
-                                field.onChange([...currentValues, subject.id]);
-                              } else {
-                                field.onChange(
-                                  currentValues.filter(
-                                    (id) => id !== subject.id
-                                  )
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={subject.id}
+                              checked={(field.value || []).includes(subject.id)}
+                              onCheckedChange={(checked) => {
+                                const currentValues = field.value || [];
+                                if (checked) {
+                                  field.onChange([...currentValues, subject.id]);
+                                } else {
+                                  field.onChange(
+                                    currentValues.filter(
+                                      (id) => id !== subject.id
+                                    )
+                                  );
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={subject.id}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {subject.abbreviation_name}
+                            </label>
+                          </div>
+                          
+                          {/* Course Owner Checkbox */}
+                          {(field.value || []).includes(subject.id) && (
+                            <FormField
+                              control={editFacultyForm.control}
+                              name="courseOwnerSubjectIds"
+                              render={({ field: coField }) => {
+                                const isChecked = (coField.value || []).includes(subject.id);
+                                return (
+                                  <div className="flex items-center space-x-2 mr-2">
+                                    <Checkbox
+                                      id={`co-${subject.id}`}
+                                      className="data-[state=checked]:bg-[#1A5CA1]"
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) => {
+                                        const currentSelections = coField.value || [];
+                                        if (checked) {
+                                          coField.onChange([...currentSelections, subject.id]);
+                                        } else {
+                                          coField.onChange(currentSelections.filter(id => id !== subject.id));
+                                        }
+                                      }}
+                                    />
+                                    <label htmlFor={`co-${subject.id}`} className="text-xs font-medium text-[#1A5CA1]">
+                                      Course Owner
+                                    </label>
+                                  </div>
                                 );
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor={subject.id}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {subject.abbreviation_name}
-                          </label>
+                              }}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
