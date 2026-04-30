@@ -45,3 +45,6 @@ next-env.d.ts
 # Ignore test API routes
 .env
 email-report
+
+# Private documentation
+README_NEW.md
